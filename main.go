@@ -7,9 +7,9 @@ import (
 )
 
 type Lux struct {
-	Projects []string
+	Projects   []string
 	ConfigPath string
-	Templates *template.Template
+	Templates  *template.Template
 }
 
 func (l *Lux) RootConfig() string {
@@ -29,8 +29,21 @@ func (l *Lux) renderRoot() error {
 	return nil
 }
 
-func (l *Lux) renderProject(p string, result chan<- error)  {
-	result <- nil
+func (l *Lux) renderProject(p string, result chan<- error) {
+	data, err := loadYaml(p)
+	if err != nil {
+		result <- err
+		return
+	}
+	name := filepath.Base(p)
+	path := filepath.Join(l.ConfigPath, "projects", name)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o664)
+	if err != nil {
+		result <- err
+		return
+	}
+	defer f.Close()
+	result <- l.Templates.ExecuteTemplate(f, data.TemplateName(), data)
 }
 
 func (l *Lux) renderProjects() error {
@@ -40,7 +53,7 @@ func (l *Lux) renderProjects() error {
 	}
 	var err error
 	for range l.Projects {
-		res := <- results
+		res := <-results
 		if res != nil {
 			err = res
 		}
@@ -53,7 +66,7 @@ func New(projects, templates []string, configPath string) (*Lux, error) {
 	if err != nil {
 		return nil, err
 	}
-	lux := &Lux{projects,configPath,tmpl}
+	lux := &Lux{projects, configPath, tmpl}
 	err = lux.renderProjects()
 	if err != nil {
 		return nil, err
