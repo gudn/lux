@@ -35,6 +35,11 @@ func (l *Lux) renderProject(p string, result chan<- error) {
 		result <- err
 		return
 	}
+	data["root"], err = filepath.Abs(p)
+	if err != nil {
+		result <- err
+		return
+	}
 	name := filepath.Base(p)
 	path := filepath.Join(l.ConfigPath, "projects", name)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o664)
