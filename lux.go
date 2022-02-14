@@ -47,11 +47,15 @@ func (l *Lux) renderProject(p string, result chan<- error) {
 }
 
 func (l *Lux) renderProjects() error {
+	err := os.MkdirAll(filepath.Join(l.ConfigPath, "projects"), 0o776)
+	if err != nil {
+		return err
+	}
 	results := make(chan error, len(l.Projects))
 	for _, p := range l.Projects {
 		go l.renderProject(p, results)
 	}
-	var err error
+	err = nil
 	for range l.Projects {
 		res := <-results
 		if res != nil {
