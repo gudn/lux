@@ -58,7 +58,7 @@ func main() {
 	if !execNginx {
 		return
 	}
-	args := []string{"-c", root, "-g", "daemon off;"}
+	args := []string{"nginx", "-c", root, "-g", "daemon off;"}
 	nginx, err := exec.LookPath("nginx")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
