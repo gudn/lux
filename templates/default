@@ -1,0 +1,13 @@
+server {
+  listen 80;
+  listen [::]:80 default ipv6only=true;
+
+  {{if .host}}server_name {{.host | punycode}};{{else}}server_name _;{{end}}
+
+  root {{.root}};
+  index index.html;
+
+  location / {
+    try_files $uri $uri.html =404;
+  }
+}
