@@ -80,12 +80,8 @@ func (l *Lux) renderProjects() ([]string, error) {
 	return configs, err
 }
 
-func New(projects, templates []string, configPath string) (*Lux, error) {
-	tmpl, err := template.ParseFiles(templates...)
-	if err != nil {
-		return nil, err
-	}
-	lux := &Lux{projects, configPath, tmpl}
+func New(projects []string, templates *template.Template , configPath string) (*Lux, error) {
+	lux := &Lux{projects, configPath, templates}
 	configs, err := lux.renderProjects()
 	if err != nil {
 		return nil, err

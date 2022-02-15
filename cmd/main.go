@@ -27,19 +27,12 @@ func init() {
 }
 
 func main() {
-	entries, err := os.ReadDir(templatesPath)
+	templates, err := lux.ParseTemplates(templatesPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	templates := make([]string, 0)
-	for _, e := range entries {
-		if e.Type().IsRegular() {
-			name := filepath.Join(templatesPath, e.Name())
-			templates = append(templates, name)
-		}
-	}
-	entries, err = os.ReadDir(projectSearchPath)
+	entries, err := os.ReadDir(projectSearchPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
