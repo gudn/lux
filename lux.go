@@ -16,58 +16,68 @@ func (l *Lux) RootConfig() string {
 	return filepath.Join(l.ConfigPath, "nginx.conf")
 }
 
-func (l *Lux) renderRoot() error {
+func (l *Lux) renderRoot(projects []string) error {
 	f, err := os.OpenFile(l.RootConfig(), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o664)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	err = l.Templates.ExecuteTemplate(f, "nginx.conf", l)
+	data := map[string]interface{}{"ConfigPath": l.ConfigPath, "ProjectsConfigs": projects}
+	err = l.Templates.ExecuteTemplate(f, "nginx.conf", data)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *Lux) renderProject(p string, result chan<- error) {
+func (l *Lux) renderProject(p string, errors chan<- error, results chan<- string) {
 	data, err := loadYaml(p)
 	if err != nil {
-		result <- err
+		errors <- err
 		return
 	}
 	data["root"], err = filepath.Abs(p)
 	if err != nil {
-		result <- err
+		errors <- err
 		return
 	}
 	name := filepath.Base(p)
 	path := filepath.Join(l.ConfigPath, "projects", name)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o664)
 	if err != nil {
-		result <- err
+		errors <- err
 		return
 	}
 	defer f.Close()
-	result <- l.Templates.ExecuteTemplate(f, data.TemplateName(), data)
+	err = l.Templates.ExecuteTemplate(f, data.TemplateName(), data)
+	if err != nil {
+		errors <- err
+		return
+	}
+	results <- f.Name()
 }
 
-func (l *Lux) renderProjects() error {
+func (l *Lux) renderProjects() ([]string, error) {
 	err := os.MkdirAll(filepath.Join(l.ConfigPath, "projects"), 0o776)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	results := make(chan error, len(l.Projects))
+	errors := make(chan error, len(l.Projects))
+	results := make(chan string, len(l.Projects))
 	for _, p := range l.Projects {
-		go l.renderProject(p, results)
+		go l.renderProject(p, errors, results)
 	}
 	err = nil
+	configs := make([]string, 0, len(l.Projects))
 	for range l.Projects {
-		res := <-results
-		if res != nil {
-			err = res
+		select {
+		case e := <-errors:
+			err = e
+		case p := <-results:
+			configs = append(configs, p)
 		}
 	}
-	return err
+	return configs, err
 }
 
 func New(projects, templates []string, configPath string) (*Lux, error) {
@@ -76,11 +86,11 @@ func New(projects, templates []string, configPath string) (*Lux, error) {
 		return nil, err
 	}
 	lux := &Lux{projects, configPath, tmpl}
-	err = lux.renderProjects()
+	configs, err := lux.renderProjects()
 	if err != nil {
 		return nil, err
 	}
-	err = lux.renderRoot()
+	err = lux.renderRoot(configs)
 	if err != nil {
 		return nil, err
 	}
