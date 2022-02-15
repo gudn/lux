@@ -17,12 +17,16 @@ func (l *Lux) RootConfig() string {
 }
 
 func (l *Lux) renderRoot(projects []string) error {
+	configPath, err := filepath.Abs(l.ConfigPath)
+	if err != nil {
+		return err
+	}
 	f, err := os.OpenFile(l.RootConfig(), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o664)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	data := map[string]interface{}{"ConfigPath": l.ConfigPath, "ProjectsConfigs": projects}
+	data := map[string]interface{}{"ConfigPath": configPath, "ProjectsConfigs": projects}
 	err = l.Templates.ExecuteTemplate(f, "nginx.conf", data)
 	if err != nil {
 		return err
@@ -80,7 +84,7 @@ func (l *Lux) renderProjects() ([]string, error) {
 	return configs, err
 }
 
-func New(projects []string, templates *template.Template , configPath string) (*Lux, error) {
+func New(projects []string, templates *template.Template, configPath string) (*Lux, error) {
 	lux := &Lux{projects, configPath, templates}
 	configs, err := lux.renderProjects()
 	if err != nil {
